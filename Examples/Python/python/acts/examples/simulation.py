@@ -640,6 +640,7 @@ def addGeant4(
     outputSimHits: str = "simhits",
     preSelectParticles: Optional[ParticleSelectorConfig] = ParticleSelectorConfig(),
     postSelectParticles: Optional[ParticleSelectorConfig] = None,
+    recordHitsOfNeutrals: bool = False,
     recordHitsOfSecondaries=True,
     keepParticlesWithoutHits=True,
     outputDirCsv: Optional[Union[Path, str]] = None,
@@ -728,6 +729,7 @@ def addGeant4(
         killVolume=killVolume,
         killAfterTime=killAfterTime,
         killSecondaries=killSecondaries,
+        recordHitsOfNeutrals=recordHitsOfNeutrals,
         recordHitsOfSecondaries=recordHitsOfSecondaries,
         keepParticlesWithoutHits=keepParticlesWithoutHits,
     )
