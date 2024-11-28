@@ -10,6 +10,8 @@ add_library(
     src/EDM4hepParticleWriter.cpp
     src/EDM4hepSimHitWriter.cpp
     src/EDM4hepUtil.cpp
+    src/EDM4hepCaloReader.cpp
+    src/EDM4hepCaloHitWriter.cpp
 )
 target_include_directories(
     ActsExamplesIoEDM4hep

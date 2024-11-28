@@ -16,6 +16,7 @@
 #include "ActsExamples/Io/EDM4hep/EDM4hepSimHitWriter.hpp"
 #include "ActsExamples/Io/EDM4hep/EDM4hepTrackReader.hpp"
 #include "ActsExamples/Io/EDM4hep/EDM4hepTrackWriter.hpp"
+#include "ActsExamples/Io/EDM4hep/EDM4hepCaloReader.hpp"
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -60,4 +61,8 @@ PYBIND11_MODULE(ActsPythonBindingsEDM4hep, m) {
   ACTS_PYTHON_DECLARE_READER(ActsExamples::EDM4hepTrackReader, m,
                              "EDM4hepTrackReader", inputTracks, outputTracks,
                              inputPath, Bz);
+
+  ACTS_PYTHON_DECLARE_READER(
+      ActsExamples::EDM4hepCaloReader, m, "EDM4hepCaloReader",
+      inputPath, inputCaloHits, outputCaloHits);
 }

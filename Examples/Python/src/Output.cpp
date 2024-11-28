@@ -50,6 +50,7 @@
 #include "ActsExamples/Plugins/Obj/ObjTrackingGeometryWriter.hpp"
 #include "ActsExamples/TrackFinding/ITrackParamsLookupReader.hpp"
 #include "ActsExamples/TrackFinding/ITrackParamsLookupWriter.hpp"
+#include "ActsExamples/Io/EDM4hep/EDM4hepCaloHitWriter.hpp"
 
 #include <memory>
 #include <string>
@@ -436,6 +437,10 @@ void addOutput(Context& ctx) {
   ACTS_PYTHON_DECLARE_WRITER(ActsExamples::CsvExaTrkXGraphWriter, mex,
                              "CsvExaTrkXGraphWriter", inputGraph, outputDir,
                              outputStem);
+
+  ACTS_PYTHON_DECLARE_WRITER(ActsExamples::EDM4hepCaloHitWriter, mex,
+                            "EDM4hepCaloHitWriter", inputCaloHits, outputPath,
+                            outputCaloHits);
 }
 
 }  // namespace Acts::Python

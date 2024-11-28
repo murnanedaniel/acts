@@ -73,6 +73,14 @@ target_link_libraries(
         ActsExamplesMaterialMapping
 )
 
+if(ACTS_BUILD_EXAMPLES_EDM4HEP)
+    target_link_libraries(
+        ActsPythonBindings
+        PUBLIC
+            ActsExamplesIoEDM4hep
+    )
+endif()
+
 set(py_files
     __init__.py
     examples/__init__.py
@@ -312,4 +320,12 @@ endforeach()
 install(
     DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python/acts/
     DESTINATION ${_python_install_dir}
+)
+
+target_include_directories(
+  ActsPythonBindings
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Io/EDM4hep/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Plugins/Podio/include
 )

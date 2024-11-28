@@ -694,3 +694,28 @@ def test_edm4hep_tracks_writer(tmp_path):
             assert rp.z == 0.0
             assert abs(perigee.D0) < 1e0
             assert abs(perigee.Z0) < 1e1
+
+
+@pytest.mark.edm4hep
+@pytest.mark.skipif(not edm4hepEnabled, reason="EDM4hep is not set up")
+def test_edm4hep_calo_writer(tmp_path, fatras, conf_const):
+    from acts.examples.edm4hep import EDM4hepCaloWriter
+
+    s = Sequencer(numThreads=1, events=10)
+    _, simAlg, _ = fatras(s)
+
+    out = tmp_path / "calohits_edm4hep.root"
+
+    s.addWriter(
+        conf_const(
+            EDM4hepCaloWriter,
+            level=acts.logging.INFO,
+            inputCaloHits=simAlg.config.outputCaloHits,
+            outputPath=str(out),
+        )
+    )
+
+    s.run()
+
+    assert os.path.isfile(out)
+    assert os.stat(out).st_size > 200
