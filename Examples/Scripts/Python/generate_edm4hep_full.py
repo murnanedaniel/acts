@@ -30,14 +30,12 @@ def generate_full_detector_data(output_path, n_events=100):
     
     # Configure particle gun
     ddsim.enableGun = True
-    ddsim.gun.multiplicity = 5
-    ddsim.gun.particle = "e-"  # Single particle type instead of list
-    ddsim.gun.energy = 5.0 * u.GeV  # Single energy value
+    ddsim.gun.particle = "e-"
+    ddsim.gun.energy = "50*GeV"
     ddsim.gun.distribution = "uniform"
-    ddsim.gun.phiMin = -3.14159
-    ddsim.gun.phiMax = 3.14159
-    ddsim.gun.thetaMin = 0.0
-    ddsim.gun.thetaMax = 3.14159
+    ddsim.gun.thetaMin = 1.57
+    ddsim.gun.thetaMax = 1.57
+    
     
     # Ensure output directory exists
     output_path = Path(output_path)

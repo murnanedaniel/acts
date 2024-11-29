@@ -35,6 +35,7 @@
 #include "ActsExamples/Io/Root/RootPropagationSummaryWriter.hpp"
 #include "ActsExamples/Io/Root/RootSeedWriter.hpp"
 #include "ActsExamples/Io/Root/RootSimHitWriter.hpp"
+#include "ActsExamples/Io/Root/RootCaloHitWriter.hpp"
 #include "ActsExamples/Io/Root/RootSpacepointWriter.hpp"
 #include "ActsExamples/Io/Root/RootTrackParameterWriter.hpp"
 #include "ActsExamples/Io/Root/RootTrackStatesWriter.hpp"
@@ -441,6 +442,10 @@ void addOutput(Context& ctx) {
   ACTS_PYTHON_DECLARE_WRITER(ActsExamples::EDM4hepCaloHitWriter, mex,
                             "EDM4hepCaloHitWriter", inputCaloHits, outputPath,
                             outputCaloHits);
+
+  ACTS_PYTHON_DECLARE_WRITER(ActsExamples::RootCaloHitWriter, mex,
+                           "RootCaloHitWriter", inputCaloHits, filePath,
+                           fileMode, treeName);
 }
 
 }  // namespace Acts::Python

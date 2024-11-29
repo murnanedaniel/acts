@@ -29,7 +29,6 @@ class EDM4hepCaloHitWriter final : public WriterT<std::vector<Acts::EDM4hepCaloH
     std::string outputPath;
     /// Name of the calorimeter hit collection in EDM4hep
     std::string outputCaloHits = "ActsSimCaloHits";
-    bool useEventStore = true;
   };
 
   /// Construct the writer
@@ -38,20 +37,19 @@ class EDM4hepCaloHitWriter final : public WriterT<std::vector<Acts::EDM4hepCaloH
   /// @param level is the logging level
   EDM4hepCaloHitWriter(const Config& config, Acts::Logging::Level level);
 
+  /// Finalize the writer
   ProcessCode finalize() final;
 
-  /// Readonly access to the config
+  /// Get readonly access to the config parameters
   const Config& config() const { return m_cfg; }
 
- protected:
+ private:
   ProcessCode writeT(const AlgorithmContext& ctx,
                     const std::vector<Acts::EDM4hepCaloHit>& caloHits) final;
 
- private:
-  Config m_cfg;
-  Acts::PodioUtil::ROOTWriter m_writer;
-  std::mutex m_writeMutex;
-  edm4hep::SimCalorimeterHitCollection m_hitCollection;
+  Config m_cfg;                           ///< The config object
+  std::mutex m_writeMutex;               ///< Mutex used to protect multi-threaded writes
+  Acts::PodioUtil::ROOTWriter m_writer;  ///< The writer object for the output file
 };
 
 }  // namespace ActsExamples 

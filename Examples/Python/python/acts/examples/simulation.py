@@ -201,6 +201,7 @@ def addPythia8(
     vtxGen: Optional[EventGenerator.VertexGenerator] = None,
     outputDirCsv: Optional[Union[Path, str]] = None,
     outputDirRoot: Optional[Union[Path, str]] = None,
+    outputHepMC: Optional[Union[Path, str]] = None,
     printParticles: bool = False,
     printPythiaEventListing: Optional[Union[None, str]] = None,
     logLevel: Optional[acts.logging.Level] = None,
@@ -227,6 +228,8 @@ def addPythia8(
         the output folder for the Csv output, None triggers no output
     outputDirRoot : Path|str, path, None
         the output folder for the Root output, None triggers no output
+    outputHepMC : Path|str, path, None
+        the output folder for the HepMC3 output, None triggers no output
     printParticles : bool, False
         print generated particles
     printPythiaEventListing
@@ -257,23 +260,26 @@ def addPythia8(
 
     generators = []
     if nhard is not None and nhard > 0:
-        generators.append(
-            acts.examples.EventGenerator.Generator(
-                multiplicity=acts.examples.FixedMultiplicityGenerator(n=nhard),
-                vertex=vtxGen,
-                particles=acts.examples.pythia8.Pythia8Generator(
-                    level=customLogLevel(),
-                    **acts.examples.defaultKWArgs(
-                        pdgBeam0=beam[0],
-                        pdgBeam1=beam[1],
-                        cmsEnergy=cmsEnergy,
-                        settings=hardProcess,
-                        printLongEventListing=printLongEventListing,
-                        printShortEventListing=printShortEventListing,
-                    ),
+        print("DEBUG: Creating hard process generator")
+        gen = acts.examples.EventGenerator.Generator(
+            multiplicity=acts.examples.FixedMultiplicityGenerator(n=nhard),
+            vertex=vtxGen,
+            particles=acts.examples.pythia8.Pythia8Generator(
+                level=customLogLevel(),
+                **acts.examples.defaultKWArgs(
+                    pdgBeam0=beam[0],
+                    pdgBeam1=beam[1],
+                    cmsEnergy=cmsEnergy,
+                    settings=hardProcess,
+                    printLongEventListing=printLongEventListing,
+                    printShortEventListing=printShortEventListing,
+                    enableHepMC3=(outputHepMC is not None),
+                    hepMC3Output=str(outputHepMC) if outputHepMC is not None else "",
                 ),
-            )
+            ),
         )
+        print(f"DEBUG: Generator config: {dir(gen.particles)}")
+        generators.append(gen)
     if npileup > 0:
         generators.append(
             acts.examples.EventGenerator.Generator(
@@ -299,6 +305,8 @@ def addPythia8(
         outputVertices="vertices_input",
         randomNumbers=rnd,
     )
+    print(f"DEBUG: EventGenerator config type: {type(evGen.config)}")
+    print(f"DEBUG: EventGenerator config attrs: {dir(evGen.config)}")
 
     s.addReader(evGen)
 

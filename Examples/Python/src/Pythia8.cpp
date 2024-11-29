@@ -50,7 +50,9 @@ void addPythia8(Context& ctx) {
       .def_readwrite("labelSecondaries", &Gen::Config::labelSecondaries)
       .def_readwrite("spatialVertexThreshold",
                      &Gen::Config::spatialVertexThreshold)
-      .def_readwrite("initializationSeed", &Gen::Config::initializationSeed);
+      .def_readwrite("initializationSeed", &Gen::Config::initializationSeed)
+      .def_readwrite("enableHepMC3", &Gen::Config::enableHepMC3)
+      .def_readwrite("hepMC3Output", &Gen::Config::hepMC3Output);
 
   patchClassesWithConfig(p8);
 }

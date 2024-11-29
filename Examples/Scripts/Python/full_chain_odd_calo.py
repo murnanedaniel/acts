@@ -349,11 +349,11 @@ if args.edm4hep:
     if args.output_root:
         # Add writer for calorimeter hits
         s.addWriter(
-            acts.examples.EDM4hepCaloHitWriter(
-                config=acts.examples.EDM4hepCaloHitWriter.Config(
+            acts.examples.RootCaloHitWriter(
+                config=acts.examples.RootCaloHitWriter.Config(
                     inputCaloHits="calohits",
-                    outputPath=str(outputDir / "calohits.root"),
-                    outputCaloHits="calohits",
+                    filePath=str(outputDir / "calohits.root"),
+                    treeName="calohits"
                 ),
                 level=acts.logging.INFO
             )

@@ -30,9 +30,12 @@ ProcessCode EDM4hepCaloHitWriter::writeT(
     const AlgorithmContext& ctx,
     const std::vector<Acts::EDM4hepCaloHit>& caloHits) {
   
+  podio::Frame frame;
+  edm4hep::SimCalorimeterHitCollection hitCollection;
+
   // Convert ACTS EDM4hepCaloHits to EDM4hep SimCalorimeterHits
   for (const auto& hit : caloHits) {
-    auto edm4hepHit = m_hitCollection.create();
+    auto edm4hepHit = hitCollection.create();
     
     // Set the position
     edm4hepHit.setPosition({
@@ -44,33 +47,19 @@ ProcessCode EDM4hepCaloHitWriter::writeT(
     // Set the energy
     edm4hepHit.setEnergy(hit.energy);
     
-    // Combine event ID and cell ID
-    uint64_t combinedID = (static_cast<uint64_t>(ctx.eventNumber) << 32) | 
-                         (hit.cellID & 0xFFFFFFFF);
-    edm4hepHit.setCellID(combinedID);
+    // Set the cell ID (no event encoding)
+    edm4hepHit.setCellID(hit.cellID);
   }
 
-  // Only write if not using event store
-  if (!m_cfg.useEventStore) {
-    podio::Frame frame;
-    frame.put(std::move(m_hitCollection), m_cfg.outputCaloHits);
-    
-    std::lock_guard lock{m_writeMutex};
-    m_writer.writeFrame(frame, "events");
-    m_hitCollection.clear();
-  }
+  frame.put(std::move(hitCollection), m_cfg.outputCaloHits);
+  
+  std::lock_guard lock{m_writeMutex};
+  m_writer.writeFrame(frame, "events");
 
   return ProcessCode::SUCCESS;
 }
 
 ProcessCode EDM4hepCaloHitWriter::finalize() {
-  if (m_cfg.useEventStore) {
-    podio::Frame frame;
-    frame.put(std::move(m_hitCollection), m_cfg.outputCaloHits);
-    
-    std::lock_guard lock{m_writeMutex};
-    m_writer.writeFrame(frame, "events");
-  }
   m_writer.finish();
   return ProcessCode::SUCCESS;
 }
