@@ -18,10 +18,15 @@ handler.setFormatter(logging.Formatter(
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
-def generate_pythia_events(output_path, n_events=10, n_pileup=1, seed=None):
+def generate_pythia_events(output_path, n_events=10, n_pileup=1, seed=None, separate_pileup_file=False):
     """Generate HepMC3 events using Pythia8"""
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Create pileup output path if requested
+    pileup_path = None
+    if separate_pileup_file:
+        pileup_path = output_path.parent / (output_path.stem + "_pileup.hepmc3")
     
     # Create sequencer for Pythia8
     s = Sequencer(numThreads=1, events=n_events)
@@ -34,11 +39,14 @@ def generate_pythia_events(output_path, n_events=10, n_pileup=1, seed=None):
         npileup=n_pileup,
         hardProcess=["HardQCD:all = on"],
         outputHepMC=output_path,
+        outputHepMCPileup=pileup_path,
         rnd=rnd,
     )
     
     logger.info(f"Starting Pythia8 generation of {n_events} events")
     logger.info(f"HepMC3 output will be written to {output_path}")
+    if pileup_path:
+        logger.info(f"Pileup events will be written to {pileup_path}")
     s.run()
     logger.info("Pythia8 generation complete")
 
@@ -68,8 +76,8 @@ def run_ddsim(input_hepmc, output_edm4hep, n_events=10):
         logger.error(f"DD4hep simulation failed with error: {e}")
         raise
 
-def generate_full_detector_data(output_path, n_events=100, n_pileup=1, seed=None):
-    """Generate combined tracking and calorimeter data using Pythia8 and DD4hep"""
+def generate_full_detector_data(output_path, n_events=100, n_pileup=1, seed=None, run_simulation=True, separate_pileup_file=False):
+    """Generate combined tracking and calorimeter data using Pythia8 and optionally DD4hep"""
     output_path = Path(output_path)
     work_dir = output_path.parent / "hepmc3_output"
     work_dir.mkdir(parents=True, exist_ok=True)
@@ -79,10 +87,11 @@ def generate_full_detector_data(output_path, n_events=100, n_pileup=1, seed=None
     hepmc3_file = work_dir / f"pythia8_events_{timestamp}.hepmc3"
     
     # Step 1: Generate HepMC3 events with Pythia8
-    generate_pythia_events(hepmc3_file, n_events, n_pileup, seed=seed)
+    generate_pythia_events(hepmc3_file, n_events, n_pileup, seed=seed, separate_pileup_file=separate_pileup_file)
     
-    # Step 2: Run DD4hep simulation
-    run_ddsim(hepmc3_file, output_path, n_events)
+    # Step 2: Run DD4hep simulation if requested
+    if run_simulation:
+        run_ddsim(hepmc3_file, output_path, n_events)
 
 if __name__ == "__main__":
     import argparse
@@ -91,6 +100,8 @@ if __name__ == "__main__":
     parser.add_argument("--events", type=int, default=100, help="Number of events")
     parser.add_argument("--pileup", type=int, default=1, help="Number of pileup events")
     parser.add_argument("--seed", type=int, default=None, help="Random seed")
+    parser.add_argument("--no-simulation", action="store_true", help="Skip DD4hep simulation")
+    parser.add_argument("--separate-pileup-file", action="store_true", help="Write pileup events to separate file")
     args = parser.parse_args()
     
-    generate_full_detector_data(args.output, args.events, args.pileup, args.seed)
+    generate_full_detector_data(args.output, args.events, args.pileup, args.seed, not args.no_simulation, args.separate_pileup_file)

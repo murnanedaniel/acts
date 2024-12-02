@@ -202,6 +202,7 @@ def addPythia8(
     outputDirCsv: Optional[Union[Path, str]] = None,
     outputDirRoot: Optional[Union[Path, str]] = None,
     outputHepMC: Optional[Union[Path, str]] = None,
+    outputHepMCPileup: Optional[Union[Path, str]] = None,
     printParticles: bool = False,
     printPythiaEventListing: Optional[Union[None, str]] = None,
     logLevel: Optional[acts.logging.Level] = None,
@@ -230,6 +231,8 @@ def addPythia8(
         the output folder for the Root output, None triggers no output
     outputHepMC : Path|str, path, None
         the output folder for the HepMC3 output, None triggers no output
+    outputHepMCPileup : Path|str, path, None
+        the output folder for the pileup HepMC3 output, None triggers no separate output
     printParticles : bool, False
         print generated particles
     printPythiaEventListing
@@ -295,6 +298,12 @@ def addPythia8(
     
     if npileup > 0:
         logger.debug(f"Adding pileup generator with n={npileup}")
+        # Modify HepMC3 output path for pileup
+        pileup_hepmc3_settings = hepmc3_settings.copy()
+        if outputHepMCPileup is not None:
+            pileup_hepmc3_settings["enableHepMC3"] = True
+            pileup_hepmc3_settings["hepMC3Output"] = str(outputHepMCPileup)
+            
         generators.append(
             acts.examples.EventGenerator.Generator(
                 multiplicity=acts.examples.FixedMultiplicityGenerator(n=npileup),
@@ -306,7 +315,7 @@ def addPythia8(
                         pdgBeam1=beam[1],
                         cmsEnergy=cmsEnergy,
                         settings=pileupProcess,
-                        **hepmc3_settings,
+                        **pileup_hepmc3_settings,
                     ),
                 ),
             )
