@@ -238,6 +238,13 @@ def addPythia8(
 
     customLogLevel = acts.examples.defaultLogging(s, logLevel)
 
+    # Add debug logging at the start
+    logger = acts.logging.getLogger("Pythia8Gen")
+    logger.setLevel(acts.logging.DEBUG)
+    logger.debug(f"Configuring Pythia8 with nhard={nhard}, npileup={npileup}")
+    logger.debug(f"Hard process: {hardProcess}")
+    logger.debug(f"Pileup process: {pileupProcess}")
+    
     # Preliminaries
     rnd = rnd or acts.examples.RandomNumbers()
     vtxGen = vtxGen or acts.examples.GaussianVertexGenerator(
@@ -258,9 +265,16 @@ def addPythia8(
     else:
         raise RuntimeError("Invalid pythia config")
 
+    # Add debug logging before creating generators
     generators = []
+    # Common HepMC3 settings for both generators
+    hepmc3_settings = {
+        "enableHepMC3": (outputHepMC is not None),
+        "hepMC3Output": str(outputHepMC) if outputHepMC is not None else "",
+    }
+
     if nhard is not None and nhard > 0:
-        print("DEBUG: Creating hard process generator")
+        logger.debug(f"Adding hard process generator with n={nhard}")
         gen = acts.examples.EventGenerator.Generator(
             multiplicity=acts.examples.FixedMultiplicityGenerator(n=nhard),
             vertex=vtxGen,
@@ -273,14 +287,14 @@ def addPythia8(
                     settings=hardProcess,
                     printLongEventListing=printLongEventListing,
                     printShortEventListing=printShortEventListing,
-                    enableHepMC3=(outputHepMC is not None),
-                    hepMC3Output=str(outputHepMC) if outputHepMC is not None else "",
+                    **hepmc3_settings,
                 ),
             ),
         )
-        print(f"DEBUG: Generator config: {dir(gen.particles)}")
         generators.append(gen)
+    
     if npileup > 0:
+        logger.debug(f"Adding pileup generator with n={npileup}")
         generators.append(
             acts.examples.EventGenerator.Generator(
                 multiplicity=acts.examples.FixedMultiplicityGenerator(n=npileup),
@@ -292,10 +306,13 @@ def addPythia8(
                         pdgBeam1=beam[1],
                         cmsEnergy=cmsEnergy,
                         settings=pileupProcess,
+                        **hepmc3_settings,
                     ),
                 ),
             )
         )
+    
+    logger.debug(f"Created {len(generators)} generators")
 
     # Input
     evGen = acts.examples.EventGenerator(
@@ -305,8 +322,6 @@ def addPythia8(
         outputVertices="vertices_input",
         randomNumbers=rnd,
     )
-    print(f"DEBUG: EventGenerator config type: {type(evGen.config)}")
-    print(f"DEBUG: EventGenerator config attrs: {dir(evGen.config)}")
 
     s.addReader(evGen)
 
