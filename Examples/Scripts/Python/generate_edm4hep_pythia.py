@@ -12,6 +12,8 @@ from acts.examples import Sequencer
 from acts.examples.odd import getOpenDataDetectorDirectory
 from acts.examples.simulation import addPythia8HepMC
 
+from DDSim.DD4hepSimulation import DD4hepSimulation
+
 # Configure logging
 logger = logging.getLogger("EDM4hepGen")
 handler = logging.StreamHandler()
@@ -58,17 +60,22 @@ def generate_pythia_events(output_path, n_events=10, n_pileup=1, seed=None):
 
 def run_ddsim(input_hepmc, output_edm4hep, n_events=10):
     """Run DD4hep simulation on HepMC3 input"""
+    # Create DD4hep simulation instance
+    ddsim = DD4hepSimulation()
+    
     odd_dir = getOpenDataDetectorDirectory()
     odd_xml = odd_dir / "xml" / "OpenDataDetector.xml"
     
-    # Construct ddsim command
-    cmd = [
-        "ddsim",
-        "--compactFile", str(odd_xml),
-        "--numberOfEvents", str(n_events),
-        "--inputFiles", str(input_hepmc),
-        "--outputFile", str(output_edm4hep)
-    ]
+    # Handle XML file path correctly for DD4hep
+    if isinstance(ddsim.compactFile, list):
+        ddsim.compactFile = [str(odd_xml)]
+    else:
+        ddsim.compactFile = str(odd_xml)
+    
+    # Configure input/output
+    ddsim.inputFiles = [str(input_hepmc)]
+    ddsim.outputFile = str(output_edm4hep)
+    ddsim.numberOfEvents = n_events
     
     logger.info(f"Starting DD4hep simulation with {n_events} events")
     logger.info(f"Using XML file: {odd_xml}")
@@ -76,9 +83,9 @@ def run_ddsim(input_hepmc, output_edm4hep, n_events=10):
     logger.info(f"Output EDM4hep: {output_edm4hep}")
     
     try:
-        subprocess.run(cmd, check=True)
+        ddsim.run()
         logger.info("DD4hep simulation complete")
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         logger.error(f"DD4hep simulation failed with error: {e}")
         raise
 
