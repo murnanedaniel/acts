@@ -200,181 +200,6 @@ def addPythia8(
     vtxGen: Optional[EventGenerator.VertexGenerator] = None,
     outputDirCsv: Optional[Union[Path, str]] = None,
     outputDirRoot: Optional[Union[Path, str]] = None,
-    printParticles: bool = False,
-    printPythiaEventListing: Optional[Union[None, str]] = None,
-    logLevel: Optional[acts.logging.Level] = None,
-) -> None:
-    """This function steers the particle generation using Pythia8
-
-    Parameters
-    ----------
-    s: Sequencer
-        the sequencer module to which we add the particle gun steps (returned from addParticleGun)
-    rnd : RandomNumbers, None
-        random number generator
-    nhard, npileup : int, 1, 200
-        Number of hard-scatter and pileup vertices
-    beam : PdgParticle|[PdgParticle,PdgParticle], eProton
-        beam particle(s)
-    cmsEnergy : float, 14 TeV
-        CMS energy
-    hardProcess, pileupProcess : [str], ["HardQCD:all = on"], ["SoftQCD:all = on"]
-        hard and pileup processes
-    vtxGen : VertexGenerator, None
-        vertex generator module
-    outputDirCsv : Path|str, path, None
-        the output folder for the Csv output, None triggers no output
-    outputDirRoot : Path|str, path, None
-        the output folder for the Root output, None triggers no output
-    printParticles : bool, False
-        print generated particles
-    printPythiaEventListing
-        None or "short" or "long"
-    """
-
-    customLogLevel = acts.examples.defaultLogging(s, logLevel)
-
-    # Add debug logging at the start
-    logger = acts.logging.getLogger("Pythia8Gen")
-    logger.setLevel(acts.logging.DEBUG)
-    logger.debug(f"Configuring Pythia8 with nhard={nhard}, npileup={npileup}")
-    logger.debug(f"Hard process: {hardProcess}")
-    logger.debug(f"Pileup process: {pileupProcess}")
-    
-    # Preliminaries
-    rnd = rnd or acts.examples.RandomNumbers()
-    vtxGen = vtxGen or acts.examples.GaussianVertexGenerator(
-        stddev=acts.Vector4(0, 0, 0, 0), mean=acts.Vector4(0, 0, 0, 0)
-    )
-    if not isinstance(beam, Iterable):
-        beam = (beam, beam)
-
-    if printPythiaEventListing is None:
-        printShortEventListing = False
-        printLongEventListing = False
-    elif printPythiaEventListing == "short":
-        printShortEventListing = True
-        printLongEventListing = False
-    elif printPythiaEventListing == "long":
-        printShortEventListing = False
-        printLongEventListing = True
-    else:
-        raise RuntimeError("Invalid pythia config")
-    # Add debug logging before creating generators
-    generators = []
-
-    if nhard is not None and nhard > 0:
-        logger.debug(f"Adding hard process generator with n={nhard}")
-        gen = acts.examples.EventGenerator.Generator(
-            multiplicity=acts.examples.FixedMultiplicityGenerator(n=nhard),
-            vertex=vtxGen,
-            particles=acts.examples.pythia8.Pythia8Generator(
-                level=customLogLevel(),
-                **acts.examples.defaultKWArgs(
-                    pdgBeam0=beam[0],
-                    pdgBeam1=beam[1],
-                    cmsEnergy=cmsEnergy,
-                    settings=hardProcess,
-                    printLongEventListing=printLongEventListing,
-                    printShortEventListing=printShortEventListing,
-                ),
-            ),
-        )
-        generators.append(gen)
-    
-    if npileup > 0:
-        logger.debug(f"Adding pileup generator with n={npileup}")
-        generators.append(
-            acts.examples.EventGenerator.Generator(
-                multiplicity=acts.examples.FixedMultiplicityGenerator(n=npileup),
-                vertex=vtxGen,
-                particles=acts.examples.pythia8.Pythia8Generator(
-                    level=customLogLevel(),
-                    **acts.examples.defaultKWArgs(
-                        pdgBeam0=beam[0],
-                        pdgBeam1=beam[1],
-                        cmsEnergy=cmsEnergy,
-                        settings=pileupProcess,
-                    ),
-                ),
-            )
-        )
-    
-    logger.debug(f"Created {len(generators)} generators")
-
-    # Input
-    evGen = acts.examples.EventGenerator(
-        level=customLogLevel(),
-        generators=generators,
-        outputParticles="particles_input",
-        outputVertices="vertices_input",
-        randomNumbers=rnd,
-    )
-
-    s.addReader(evGen)
-
-    s.addWhiteboardAlias("particles", evGen.config.outputParticles)
-    s.addWhiteboardAlias("vertices_truth", evGen.config.outputVertices)
-
-    if printParticles:
-        s.addAlgorithm(
-            acts.examples.ParticlesPrinter(
-                level=customLogLevel(),
-                inputParticles=evGen.config.outputParticles,
-            )
-        )
-
-    if outputDirCsv is not None:
-        outputDirCsv = Path(outputDirCsv)
-        if not outputDirCsv.exists():
-            outputDirCsv.mkdir()
-
-        s.addWriter(
-            acts.examples.CsvParticleWriter(
-                level=customLogLevel(),
-                inputParticles=evGen.config.outputParticles,
-                outputDir=str(outputDirCsv),
-                outputStem="particles",
-            )
-        )
-
-    if outputDirRoot is not None:
-        outputDirRoot = Path(outputDirRoot)
-        if not outputDirRoot.exists():
-            outputDirRoot.mkdir()
-
-        s.addWriter(
-            acts.examples.RootParticleWriter(
-                level=customLogLevel(),
-                inputParticles=evGen.config.outputParticles,
-                filePath=str(outputDirRoot / "particles.root"),
-            )
-        )
-
-        s.addWriter(
-            acts.examples.RootVertexWriter(
-                level=customLogLevel(),
-                inputVertices=evGen.config.outputVertices,
-                filePath=str(outputDirRoot / "vertices.root"),
-            )
-        )
-
-    return s
-
-def addPythia8HepMC(
-    s: acts.examples.Sequencer,
-    rnd: Optional[acts.examples.RandomNumbers] = None,
-    nhard: int = 1,
-    npileup: int = 200,
-    beam: Optional[
-        Union[acts.PdgParticle, Iterable]
-    ] = None,  # default: acts.PdgParticle.eProton
-    cmsEnergy: Optional[float] = None,  # default: 14 * acts.UnitConstants.TeV
-    hardProcess: Optional[Iterable] = None,  # default: ["HardQCD:all = on"]
-    pileupProcess: Iterable = ["SoftQCD:all = on"],
-    vtxGen: Optional[EventGenerator.VertexGenerator] = None,
-    outputDirCsv: Optional[Union[Path, str]] = None,
-    outputDirRoot: Optional[Union[Path, str]] = None,
     outputHepMC: Optional[Union[Path, str]] = None,
     outputHepMCPileup: Optional[Union[Path, str]] = None,
     printParticles: bool = False,
@@ -441,6 +266,7 @@ def addPythia8HepMC(
         printLongEventListing = True
     else:
         raise RuntimeError("Invalid pythia config")
+
     # Add debug logging before creating generators
     generators = []
 
@@ -545,7 +371,6 @@ def addPythia8HepMC(
         )
 
     return s
-
 
 def addParticleSelection(
     s: acts.examples.Sequencer,

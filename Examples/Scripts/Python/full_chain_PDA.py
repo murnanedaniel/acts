@@ -13,7 +13,7 @@ from acts.examples import Sequencer
 from acts.examples.odd import getOpenDataDetector, getOpenDataDetectorDirectory
 from acts.examples.simulation import (
     ParticleSelectorConfig,
-    addPythia8HepMC,
+    addPythia8,
     addDigitization,
     addParticleSelection,
 )
@@ -34,6 +34,8 @@ from acts.examples.reconstruction import (
 from DDSim.DD4hepSimulation import DD4hepSimulation
 import pyhepmc as hep
 from pyhepmc.io import WriterAscii
+from contextlib import contextmanager
+import traceback
 
 def setup_logging(name="PDA_Chain"):
     """Configure logging for the chain"""
@@ -151,7 +153,7 @@ def run_pythia_stage(output_dir, config, logger=None):
     pileup_path = output_dir / f"events_{timestamp}_pileup.hepmc3"
     
     logger.info(f"Generating {config.events} events with {config.pileup} pileup each")
-    addPythia8HepMC(
+    addPythia8(
         s,
         npileup=config.pileup,
         hardProcess=[f"{config.hard_process}=on"],
@@ -546,40 +548,137 @@ def write_root_output(s, output_dir, logger):
         level=acts.logging.INFO
     ))
 
+    # Write particles
+    try:
+        s.addWriter(acts.examples.RootParticleWriter(
+            config=acts.examples.RootParticleWriter.Config(
+                filePath=str(output_dir / "particles.root"),
+            inputParticles="particles_selected"
+        ),
+            level=acts.logging.INFO
+        ))
+    except Exception as e:
+        logger.warning(f"Failed to write particles: {str(e)}")
+
+class TimingRecorder:
+    def __init__(self, output_dir):
+        self.timings = {}
+        self.output_dir = Path(output_dir)  # Ensure it's a Path object
+        self.start_time = time.time()
+        self.errors = []
+
+    @contextmanager
+    def record(self, name):
+        start = time.time()
+        try:
+            yield
+        except Exception as e:
+            self.errors.append(f"Error in {name}: {str(e)}")
+            raise  # Re-raise the exception after logging
+        finally:
+            end = time.time()
+            self.timings[name] = end - start
+
+    def write_report(self):
+        try:
+            total_time = time.time() - self.start_time
+            report = ["Timing Report", "============="]
+            
+            # Add timing entries
+            for name, duration in sorted(self.timings.items()):
+                report.append(f"{name:<30} : {duration:>.2f} seconds")
+            
+            report.append("-" * 50)
+            report.append(f"{'Total time':<30} : {total_time:>.2f} seconds")
+            
+            # Add error section if there were any errors
+            if self.errors:
+                report.append("\nErrors encountered:")
+                report.append("===================")
+                for error in self.errors:
+                    report.append(error)
+            
+            # Ensure output directory exists
+            self.output_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Write to file
+            report_path = self.output_dir / "timing_report.txt"
+            with open(report_path, "w") as f:
+                f.write("\n".join(report))
+            
+            # Print to console
+            print("\n".join(report))
+            
+        except Exception as e:
+            print(f"Error writing timing report: {str(e)}")
+            print(traceback.format_exc())
 
 def main():
-    # Parse arguments and load config
-    args = parse_args()
-    config = load_config(args)
-    logger = setup_logging()
-    
-    # Create output directory structure with optional subdirectory
-    output_dir = Path(args.output)
-    if args.output_subdir:
-        output_dir = output_dir / args.output_subdir
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Stage 1: Generate and merge HepMC3 files
-    signal_path, pileup_path = run_pythia_stage(
-        output_dir, config, logger
-    )
-    merged_path = output_dir / f"merged_{signal_path.stem}.hepmc3"
-    merge_hepmc_files(signal_path, pileup_path, merged_path, logger)
-    
-    # Stage 2: Run DD4hep simulation
-    edm4hep_path = output_dir / "edm4hep.root"
-    run_ddsim_stage(merged_path, edm4hep_path, config, logger)
-    
-    # Stage 3: Run ACTS reconstruction
-    s = Sequencer(numThreads=1, events=config.events)
-    setup_acts_reconstruction(s, edm4hep_path, config, output_dir, logger)
-    logger.info("Running ACTS reconstruction...")
+    try:
+        # Parse arguments and load config
+        args = parse_args()
+        config = load_config(args)
+        logger = setup_logging()
+        
+        # Create output directory structure with optional subdirectory
+        output_dir = Path(args.output)
+        if args.output_subdir:
+            output_dir = output_dir / args.output_subdir
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Initialize timing recorder
+        timer = TimingRecorder(output_dir)
+        
+        try:
+            # Stage 1: Generate and merge HepMC3 files
+            with timer.record("Pythia8 Generation"):
+                signal_path, pileup_path = run_pythia_stage(
+                    output_dir, config, logger
+                )
+                if not signal_path.exists() or not pileup_path.exists():
+                    raise FileNotFoundError("Pythia8 failed to generate output files")
+            
+            with timer.record("HepMC3 Merge"):
+                merged_path = output_dir / f"merged_{signal_path.stem}.hepmc3"
+                merge_hepmc_files(signal_path, pileup_path, merged_path, logger)
+                if not merged_path.exists():
+                    raise FileNotFoundError("HepMC3 merge failed to generate output file")
+            
+            # Stage 2: Run DD4hep simulation
+            with timer.record("DD4hep Simulation"):
+                edm4hep_path = output_dir / "edm4hep.root"
+                run_ddsim_stage(merged_path, edm4hep_path, config, logger)
+                if not edm4hep_path.exists():
+                    raise FileNotFoundError("DD4hep simulation failed to generate output file")
+            
+            # Stage 3: Run ACTS reconstruction
+            s = Sequencer(numThreads=1, events=config.events)
+            
+            with timer.record("ACTS Setup"):
+                setup_acts_reconstruction(s, edm4hep_path, config, output_dir, logger)
+                logger.info("Running ACTS reconstruction...")
 
-    # Stage 4: Write output
-    if config.output_root:
-        write_root_output(s, output_dir, logger)
+            # Stage 4: Write output
+            if config.output_root:
+                with timer.record("ROOT Output Setup"):
+                    write_root_output(s, output_dir, logger)
 
-    s.run()
+            with timer.record("ACTS Reconstruction"):
+                s.run()
+                
+        except Exception as e:
+            logger.error(f"Error during processing: {str(e)}")
+            logger.error(traceback.format_exc())
+            raise
+        
+        finally:
+            # Always try to write the timing report, even if there was an error
+            timer.write_report()
+            
+    except Exception as e:
+        logger.error(f"Fatal error in main: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise
 
 if __name__ == "__main__":
     main() 

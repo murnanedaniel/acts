@@ -10,7 +10,7 @@ from pyhepmc.io import WriterAscii
 import acts
 from acts.examples import Sequencer
 from acts.examples.odd import getOpenDataDetectorDirectory
-from acts.examples.simulation import addPythia8HepMC
+from acts.examples.simulation import addPythia8
 
 from DDSim.DD4hepSimulation import DD4hepSimulation
 
@@ -41,7 +41,7 @@ def generate_pythia_events(output_path, n_events=10, n_pileup=1, seed=None):
     rnd = acts.examples.RandomNumbers(seed=seed)
 
     # Set up Pythia8 with HepMC3 output
-    addPythia8HepMC(
+    addPythia8(
         s,
         npileup=n_pileup,
         hardProcess=["HardQCD:all = on"],
