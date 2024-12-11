@@ -2,7 +2,6 @@ import os
 import logging
 from pathlib import Path
 import time
-from datetime import datetime
 import yaml
 import argparse
 import math
@@ -36,6 +35,9 @@ import pyhepmc as hep
 from pyhepmc.io import WriterAscii
 from contextlib import contextmanager
 import traceback
+from acts.examples._hepmc3 import HepMC3AsciiWriter
+
+u = acts.UnitConstants
 
 def setup_logging(name="PDA_Chain"):
     """Configure logging for the chain"""
@@ -45,7 +47,7 @@ def setup_logging(name="PDA_Chain"):
         '%(asctime)s %(levelname)-8s %(name)-12s %(message)s'
     ))
     logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
     return logger
 
 def parse_args():
@@ -125,6 +127,12 @@ def parse_args():
         action="store_true",
     )
     parser.add_argument(
+        "--digi",
+        help="Run digitization",
+        action="store_true",
+        default=True,
+    )
+    parser.add_argument(
         "--reco",
         help="Run reconstruction",
         action="store_true",
@@ -136,6 +144,30 @@ def parse_args():
         type=str,
         default="",
     )
+    parser.add_argument(
+        "--run-pythia",
+        help="Run Pythia8 generation stage",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
+    parser.add_argument(
+        "--run-merge",
+        help="Run HepMC3 merging stage",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
+    parser.add_argument(
+        "--run-ddsim",
+        help="Run DD4hep simulation stage",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
+    parser.add_argument(
+        "--run-acts",
+        help="Run ACTS reconstruction stage",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
     return parser.parse_args()
 
 def run_pythia_stage(output_dir, config, logger=None):
@@ -144,13 +176,13 @@ def run_pythia_stage(output_dir, config, logger=None):
     
     # Create sequencer for Pythia8
     s = Sequencer(numThreads=1, events=config.events)
+    s.config.logLevel = acts.logging.VERBOSE
     seed = config.seed or int(time.time())
     rnd = acts.examples.RandomNumbers(seed=seed)
     
-    # Create timestamp for file names
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    hard_scatter_path = output_dir / f"events_{timestamp}.hepmc3"
-    pileup_path = output_dir / f"events_{timestamp}_pileup.hepmc3"
+    # Use simple base names for files
+    hard_scatter_path = output_dir / "events.hepmc3"
+    pileup_path = output_dir / "events_pileup.hepmc3"
     
     logger.info(f"Generating {config.events} events with {config.pileup} pileup each")
     addPythia8(
@@ -159,11 +191,28 @@ def run_pythia_stage(output_dir, config, logger=None):
         hardProcess=[f"{config.hard_process}=on"],
         outputHepMC=hard_scatter_path,
         outputHepMCPileup=pileup_path,
+        vtxGen=acts.examples.GaussianVertexGenerator(
+                mean=acts.Vector4(0, 0, 0, 0),
+                stddev=acts.Vector4(
+                    0.0125 * u.mm, 0.0125 * u.mm, 55.5 * u.mm, 5.0 * u.ns
+            ),
+        ),
         rnd=rnd,
+        logLevel=acts.logging.VERBOSE,
     )
+
+    # Add HepMC3 writer
+    s.addWriter(HepMC3Writer(
+        config=HepMC3Writer.Config(
+            inputEvents="particles",
+            outputDir=str(output_dir),
+            outputStem="events_actswriter",
+        ),
+        logLevel=acts.logging.VERBOSE,
+    ))
+
     
     s.run()
-    return hard_scatter_path, pileup_path
 
 def merge_events(signal_event, pileup_events):
     """Merge signal and multiple pileup events into a single event"""
@@ -272,7 +321,6 @@ def merge_hepmc_files(signal_path, pileup_path, output_path, logger=None):
             f.write_event(merged_event)
     
     logger.info("Merge complete")
-    return output_path
 
 def run_ddsim_stage(input_path, output_path, config, logger=None):
     """Run DD4hep simulation"""
@@ -294,12 +342,14 @@ def run_ddsim_stage(input_path, output_path, config, logger=None):
     logger.info(f"Input: {input_path}")
     logger.info(f"Output: {output_path}")
     ddsim.run()
-    return output_path
 
 def setup_acts_reconstruction(s, input_path, config, output_dir, logger=None):
     """Configure ACTS reconstruction chain"""
     logger = logger or setup_logging("ACTSReco")
-
+    
+    # Set sequencer logging level
+    s.config.logLevel = acts.logging.DEBUG
+    
     ambi_ML = config.ambi_solver == "ML"
     ambi_scoring = config.ambi_solver == "scoring"
     ambi_config = config.ambi_config
@@ -322,9 +372,9 @@ def setup_acts_reconstruction(s, input_path, config, output_dir, logger=None):
         mdecorator=oddMaterialDeco
     )
 
-    # Add EDM4hep reader
+    # Modify EDM4hep reader to use verbose logging
     edm4hepReader = acts.examples.edm4hep.EDM4hepReader(
-        level=acts.logging.INFO,
+        level=acts.logging.DEBUG,
         config=acts.examples.edm4hep.EDM4hepReader.Config(
             inputPath=str(input_path),
             inputSimHits=[
@@ -343,9 +393,11 @@ def setup_acts_reconstruction(s, input_path, config, output_dir, logger=None):
         )
     )
     s.addReader(edm4hepReader)
+    s.addWhiteboardAlias("particles", edm4hepReader.config.outputParticlesGenerator)
 
+    # Modify calorimeter reader to use verbose logging
     edm4hepCaloReader = acts.examples.edm4hep.EDM4hepCaloReader(
-        level=acts.logging.INFO,
+        level=acts.logging.VERBOSE,  # Changed from INFO
         config=acts.examples.edm4hep.EDM4hepCaloReader.Config(
             inputPath=str(input_path),
             inputCaloHits=[
@@ -360,8 +412,10 @@ def setup_acts_reconstruction(s, input_path, config, output_dir, logger=None):
     s.addReader(edm4hepCaloReader)
 
     # Add reconstruction components
-    add_particle_selection(s, edm4hepReader, config)
-    add_digitization(s, trackingGeometry, field, geoDir, config, output_dir)
+    if config.selections:
+        add_particle_selection(s, edm4hepReader, config)
+    if config.digi:
+        add_digitization(s, trackingGeometry, field, geoDir, config, output_dir)
     
     if config.reco:
         add_tracking(s, trackingGeometry, field, config, output_dir)
@@ -385,28 +439,15 @@ def add_particle_selection(s, reader, config):
     addParticleSelection(
         s,
         config=ParticleSelectorConfig(
-            rho=(0.0, 24 * acts.UnitConstants.mm),
-            absZ=(0.0, 1.0 * acts.UnitConstants.m),
+            rho=(0.0, 24 * u.mm),
+            absZ=(0.0, 1.0 * u.m),
             eta=(config.g4_post_eta[0], config.g4_post_eta[1]),
-            pt=(config.g4_post_pt * acts.UnitConstants.MeV, None),
+            pt=(config.g4_post_pt * u.MeV, None),
+            # measurements=(1, None),
             removeNeutral=True,
         ),
-        inputParticles=reader.config.outputParticlesGenerator,
+        inputParticles="particles",
         outputParticles="particles_selected",
-    )
-    
-    # Second selection for calorimeter (all particles)
-    addParticleSelection(
-        s,
-        config=ParticleSelectorConfig(
-            rho=(0.0, 24 * acts.UnitConstants.mm),
-            absZ=(0.0, 1.0 * acts.UnitConstants.m),
-            eta=(config.g4_post_eta[0], config.g4_post_eta[1]),
-            pt=(150 * acts.UnitConstants.MeV, None),
-            removeNeutral=False,
-        ),
-        inputParticles=reader.config.outputParticlesGenerator,
-        outputParticles="calo_particles_selected",
     )
 
 def add_digitization(s, tracking_geometry, field, geoDir, config, output_dir):
@@ -525,7 +566,7 @@ def add_vertexing(s, field, config, output_dir):
         outputDirRoot=output_dir if config.output_root else None,
     )
 
-def write_root_output(s, output_dir, logger):
+def write_root_output(s, config, output_dir, logger):
     """Write ROOT output files"""
     logger = logger or setup_logging("WriteRootOutput")
     logger.info(f"Writing ROOT output to {output_dir}")
@@ -553,8 +594,8 @@ def write_root_output(s, output_dir, logger):
         s.addWriter(acts.examples.RootParticleWriter(
             config=acts.examples.RootParticleWriter.Config(
                 filePath=str(output_dir / "particles.root"),
-            inputParticles="particles_selected"
-        ),
+                inputParticles="particles_selected" if config.selections else "particles"
+            ),
             level=acts.logging.INFO
         ))
     except Exception as e:
@@ -566,9 +607,11 @@ class TimingRecorder:
         self.output_dir = Path(output_dir)  # Ensure it's a Path object
         self.start_time = time.time()
         self.errors = []
+        self.logger = logging.getLogger("TimingRecorder")
 
     @contextmanager
     def record(self, name):
+        self.logger.info(f"Starting stage: {name}")
         start = time.time()
         try:
             yield
@@ -577,7 +620,9 @@ class TimingRecorder:
             raise  # Re-raise the exception after logging
         finally:
             end = time.time()
-            self.timings[name] = end - start
+            duration = end - start
+            self.timings[name] = duration
+            self.logger.info(f"Completed stage: {name} in {duration:.2f} seconds")
 
     def write_report(self):
         try:
@@ -630,41 +675,64 @@ def main():
         timer = TimingRecorder(output_dir)
         
         try:
-            # Stage 1: Generate and merge HepMC3 files
-            with timer.record("Pythia8 Generation"):
-                signal_path, pileup_path = run_pythia_stage(
-                    output_dir, config, logger
-                )
+            # Define expected file paths
+            signal_path = output_dir / "events.hepmc3"
+            pileup_path = output_dir / "events_pileup.hepmc3"
+            merged_path = output_dir / "merged_events.hepmc3"
+            edm4hep_path = output_dir / "edm4hep.root"
+            
+            # Stage 1: Generate HepMC3 files
+            if config.run_pythia:
+                with timer.record("Pythia8 Generation"):
+                    run_pythia_stage(
+                        output_dir, config, logger
+                    )
+                    if not signal_path.exists() or not pileup_path.exists():
+                        raise FileNotFoundError("Pythia8 failed to generate output files")
+            else:
+                # Verify files exist if skipping generation
                 if not signal_path.exists() or not pileup_path.exists():
-                    raise FileNotFoundError("Pythia8 failed to generate output files")
+                    raise FileNotFoundError("Required HepMC3 input files not found")
+                logger.info("Skipping Pythia8 generation stage")
             
-            with timer.record("HepMC3 Merge"):
-                merged_path = output_dir / f"merged_{signal_path.stem}.hepmc3"
-                merge_hepmc_files(signal_path, pileup_path, merged_path, logger)
+            # Stage 2: Merge HepMC3 files
+            if config.run_merge:
+                with timer.record("HepMC3 Merge"):
+                    merge_hepmc_files(signal_path, pileup_path, merged_path, logger)
+                    if not merged_path.exists():
+                        raise FileNotFoundError("HepMC3 merge failed to generate output file")
+            else:
                 if not merged_path.exists():
-                    raise FileNotFoundError("HepMC3 merge failed to generate output file")
+                    raise FileNotFoundError("Required merged HepMC3 file not found")
+                logger.info("Skipping HepMC3 merge stage")
             
-            # Stage 2: Run DD4hep simulation
-            with timer.record("DD4hep Simulation"):
-                edm4hep_path = output_dir / "edm4hep.root"
-                run_ddsim_stage(merged_path, edm4hep_path, config, logger)
+            # Stage 3: Run DD4hep simulation
+            if config.run_ddsim:
+                with timer.record("DD4hep Simulation"):
+                    run_ddsim_stage(merged_path, edm4hep_path, config, logger)
+                    if not edm4hep_path.exists():
+                        raise FileNotFoundError("DD4hep simulation failed to generate output file")
+            else:
                 if not edm4hep_path.exists():
-                    raise FileNotFoundError("DD4hep simulation failed to generate output file")
+                    raise FileNotFoundError("Required EDM4hep input file not found")
+                logger.info("Skipping DD4hep simulation stage")
             
-            # Stage 3: Run ACTS reconstruction
-            s = Sequencer(numThreads=1, events=config.events)
-            
-            with timer.record("ACTS Setup"):
-                setup_acts_reconstruction(s, edm4hep_path, config, output_dir, logger)
-                logger.info("Running ACTS reconstruction...")
+            # Stage 4: Run ACTS reconstruction
+            if config.run_acts:
+                s = Sequencer(numThreads=1, events=config.events)
+                
+                with timer.record("ACTS Setup"):
+                    setup_acts_reconstruction(s, edm4hep_path, config, output_dir, logger)
+                    logger.info("Running ACTS reconstruction...")
 
-            # Stage 4: Write output
-            if config.output_root:
-                with timer.record("ROOT Output Setup"):
-                    write_root_output(s, output_dir, logger)
+                if config.output_root:
+                    with timer.record("ROOT Output Setup"):
+                        write_root_output(s, config, output_dir, logger)
 
-            with timer.record("ACTS Reconstruction"):
-                s.run()
+                with timer.record("ACTS Reconstruction"):
+                    s.run()
+            else:
+                logger.info("Skipping ACTS reconstruction stage")
                 
         except Exception as e:
             logger.error(f"Error during processing: {str(e)}")

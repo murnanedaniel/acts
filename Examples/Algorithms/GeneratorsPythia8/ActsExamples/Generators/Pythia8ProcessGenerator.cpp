@@ -90,6 +90,9 @@ Pythia8Generator::Pythia8Generator(const Config& cfg, Acts::Logging::Level lvl)
     m_cfg.toHepMC3 = std::make_shared<HepMC3::Pythia8ToHepMC3>();
     m_hepMC3Writer = std::make_unique<HepMC3::WriterAscii>(m_cfg.hepMC3Output);
   }
+
+  m_pythia8->settings.flag("HepMC:showScaleAndVertex", true);
+  m_pythia8->settings.flag("HepMC:unscaleVtx", true);
 }
 
 // needed to allow unique_ptr of forward-declared Pythia class
@@ -135,9 +138,8 @@ Pythia8Generator::operator()(RandomEngine& rng) {
   if (m_cfg.enableHepMC3 && m_cfg.toHepMC3 && m_hepMC3Writer) {
     auto hepmc_event = std::make_shared<HepMC3::GenEvent>();
     m_cfg.toHepMC3->fill_next_event(*m_pythia8, hepmc_event.get());
-    m_hepMC3Writer->write_event(*hepmc_event);
-    // Set units to match ACTS expectations (GeV, mm)
     hepmc_event->set_units(HepMC3::Units::GEV, HepMC3::Units::MM);
+    m_hepMC3Writer->write_event(*hepmc_event);
   }
 
   // create the primary vertex

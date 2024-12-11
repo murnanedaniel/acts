@@ -193,9 +193,9 @@ def addPythia8(
     npileup: int = 200,
     beam: Optional[
         Union[acts.PdgParticle, Iterable]
-    ] = None,  # default: acts.PdgParticle.eProton
-    cmsEnergy: Optional[float] = None,  # default: 14 * acts.UnitConstants.TeV
-    hardProcess: Optional[Iterable] = None,  # default: ["HardQCD:all = on"]
+    ] = acts.PdgParticle.eProton,
+    cmsEnergy: Optional[float] = 14 * acts.UnitConstants.TeV,
+    hardProcess: Optional[Iterable] = ["HardQCD:all = on"],
     pileupProcess: Iterable = ["SoftQCD:all = on"],
     vtxGen: Optional[EventGenerator.VertexGenerator] = None,
     outputDirCsv: Optional[Union[Path, str]] = None,
