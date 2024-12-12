@@ -335,13 +335,18 @@ def run_ddsim_stage(input_path, output_path, config, logger=None):
     else:
         ddsim.compactFile = str(odd_xml)
     
-    ddsim.inputFiles = [str(input_path)]
+    # Look for event files matching pattern
+    event_files = sorted(input_path.glob("event*-events_actswriter.hepmc3"))
+    if not event_files:
+        raise FileNotFoundError(f"No event files found in {input_path}")
+    ddsim.inputFiles = [str(f) for f in event_files]
+        
     ddsim.outputFile = str(output_path)
     ddsim.numberOfEvents = config.events
     ddsim.random.seed = config.seed
     
     logger.info(f"Running DD4hep simulation with {config.events} events")
-    logger.info(f"Input: {input_path}")
+    logger.info(f"Input files: {ddsim.inputFiles}")
     logger.info(f"Output: {output_path}")
     ddsim.run()
 
@@ -711,7 +716,7 @@ def main():
             # Stage 3: Run DD4hep simulation
             if config.run_ddsim:
                 with timer.record("DD4hep Simulation"):
-                    run_ddsim_stage(merged_path, edm4hep_path, config, logger)
+                    run_ddsim_stage(output_dir, edm4hep_path, config, logger)
                     if not edm4hep_path.exists():
                         raise FileNotFoundError("DD4hep simulation failed to generate output file")
             else:

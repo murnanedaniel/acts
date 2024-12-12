@@ -22,6 +22,19 @@ target_link_libraries(
     PRIVATE ActsFatras
 )
 
+# Add Python bindings if Python bindings are enabled
+if(ACTS_BUILD_PYTHON_BINDINGS)
+    acts_python_bindings(
+        ActsExamplesIoHepMC3
+        SOURCES
+        src/HepMC3Event.cpp
+        src/HepMC3Particle.cpp
+        src/HepMC3Reader.cpp
+        src/HepMC3Vertex.cpp
+        src/HepMC3Writer.cpp
+    )
+endif()
+
 install(
     TARGETS ActsExamplesIoHepMC3
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

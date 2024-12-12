@@ -31,10 +31,10 @@ void addHepMC3(Context& ctx) {
                                 "HepMCProcessExtractor", inputEvents,
                                 outputSimulationProcesses, extractionProcess,
                                 absPdgMin, absPdgMax, pMin);
-
+                                
   ACTS_PYTHON_DECLARE_WRITER(ActsExamples::HepMC3AsciiWriter, hepmc3,
                              "HepMC3AsciiWriter", outputDir, outputStem,
-                             inputEvents);
+                             inputParticles, inputVertices);
 
   ACTS_PYTHON_DECLARE_READER(ActsExamples::HepMC3AsciiReader, hepmc3,
                              "HepMC3AsciiReader", inputDir, inputStem,

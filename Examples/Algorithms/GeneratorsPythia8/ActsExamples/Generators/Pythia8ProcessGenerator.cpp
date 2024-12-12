@@ -150,17 +150,20 @@ Pythia8Generator::operator()(RandomEngine& rng) {
   for (int ip = 0; ip < m_pythia8->event.size(); ++ip) {
     const auto& genParticle = m_pythia8->event[ip];
 
+    // TODO: remove this comment-out once we have a better understanding of the Pythia8 output!
+
     // ignore beam particles
     if (genParticle.statusHepMC() == 4) {
       continue;
     }
+
     // only interested in final, visible particles
-    if (!genParticle.isFinal()) {
-      continue;
-    }
-    if (!genParticle.isVisible()) {
-      continue;
-    }
+    // if (!genParticle.isFinal()) {
+    //   continue;
+    // }
+    // if (!genParticle.isVisible()) {
+    //   continue;
+    // }
 
     // production vertex. Pythia8 time uses units mm/c, and we use c=1
     Acts::Vector4 pos4(genParticle.xProd() * 1_mm, genParticle.yProd() * 1_mm,
