@@ -33,41 +33,43 @@ ProcessCode HepMC3AsciiWriter::writeT(
   ACTS_DEBUG("Number of particles: " << particles.size());
   ACTS_DEBUG("Number of vertices: " << vertices.size());
 
-  // Add debug logging
-  ACTS_DEBUG("Processing vertices: " << vertices.size());
-  for (const auto& vertex : vertices) {
-    ACTS_DEBUG("Vertex position: " << vertex.position4.transpose());
+  // Debug particle container contents
+  ACTS_DEBUG("First few particles in container:");
+  int count = 0;
+  for (const auto& particle : particles) {
+    ACTS_DEBUG("  Particle ID: " << particle.particleId() 
+               << " (raw value: " << particle.particleId().value() << ")");
+    if (++count >= 5) break;
   }
 
   // Create GenEvent
   HepMC3::GenEvent event;
   event.set_units(HepMC3::Units::GEV, HepMC3::Units::MM);
 
-  // Use existing HepMC3Event utilities
+  // Add vertices with their connected particles
   for (const auto& vertex : vertices) {
-    ACTS_VERBOSE("Adding vertex at position: " 
-                 << vertex.position().x() << ", "
-                 << vertex.position().y() << ", "
-                 << vertex.position().z());
-    HepMC3Event::addVertex(event, std::make_shared<SimVertex>(vertex));
-  }
-
-  for (const auto& particle : particles) {
-    ACTS_VERBOSE("Adding particle with ID: " << particle.particleId());
-    HepMC3Event::addParticle(event, std::make_shared<SimParticle>(particle));
-  }
-
-  // Before writing
-  ACTS_DEBUG("Event structure:");
-  ACTS_DEBUG("  Vertices: " << event.vertices().size());
-  for (const auto& v : event.vertices()) {
-    ACTS_DEBUG("  Vertex at: " << v->position().x() << ", " 
-               << v->position().y() << ", " << v->position().z());
+    ACTS_DEBUG("Adding vertex at " << vertex.position4.transpose());
+    ACTS_DEBUG("  Incoming particles: " << vertex.incoming.size());
+    ACTS_DEBUG("  Outgoing particles: " << vertex.outgoing.size());
+    
+    if (!vertex.outgoing.empty()) {
+      auto firstId = *vertex.outgoing.begin();
+      auto iter = particles.find(firstId);
+      if (iter != particles.end()) {
+        ACTS_DEBUG("  Found first outgoing particle with ID " << firstId.value());
+      } else {
+        ACTS_DEBUG("  Could not find outgoing particle " << firstId.value() 
+                  << " in container");
+      }
+    }
+    
+    HepMC3Event::addVertex(event, std::make_shared<SimVertex>(vertex), particles);
   }
 
   // Write the converted event
   auto path = perEventFilepath(m_cfg.outputDir, m_cfg.outputStem + ".hepmc3",
                              ctx.eventNumber);
+  ACTS_DEBUG("Writing event to " << path);
   HepMC3::WriterAscii writer(path);
   writer.write_event(event);
   

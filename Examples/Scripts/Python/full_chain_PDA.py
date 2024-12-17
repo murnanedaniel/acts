@@ -200,18 +200,6 @@ def run_pythia_stage(output_dir, config, logger=None):
         rnd=rnd,
         logLevel=acts.logging.VERBOSE,
     )
-
-    # Add HepMC3 writer
-    s.addWriter(HepMC3AsciiWriter(
-        HepMC3AsciiWriter.Config(
-            inputParticles="particles",
-            inputVertices="vertices_truth",
-            outputDir=str(output_dir),
-            outputStem="events_actswriter"
-        ),
-        acts.logging.VERBOSE
-    ))
-
     
     s.run()
 

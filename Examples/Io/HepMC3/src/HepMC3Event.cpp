@@ -37,13 +37,29 @@ HepMC3::GenParticlePtr actsParticleToGen(
 /// @param actsVertex Acts vertex that will be converted
 /// @return Converted Acts vertex to HepMC3::GenVertexPtr
 HepMC3::GenVertexPtr createGenVertex(
-    const std::shared_ptr<SimVertex>& actsVertex) {
+    const std::shared_ptr<SimVertex>& actsVertex,
+    const SimParticleContainer& particles) {
   const HepMC3::FourVector vec(
       actsVertex->position4[0], actsVertex->position4[1],
       actsVertex->position4[2], actsVertex->position4[3]);
 
   // Create vertex
   auto genVertex = std::make_shared<HepMC3::GenVertex>(vec);
+
+  // Connect existing particles to vertex
+  for (const auto& particleId : actsVertex->incoming) {
+    auto iter = particles.find(SimBarcode(particleId));
+    if (iter != particles.end()) {
+      genVertex->add_particle_in(actsParticleToGen(std::make_shared<SimParticle>(*iter)));
+    }
+  }
+
+  for (const auto& particleId : actsVertex->outgoing) {
+    auto iter = particles.find(SimBarcode(particleId));
+    if (iter != particles.end()) {
+      genVertex->add_particle_out(actsParticleToGen(std::make_shared<SimParticle>(*iter)));
+    }
+  }
 
   return genVertex;
 }
@@ -164,9 +180,12 @@ void HepMC3Event::addParticle(HepMC3::GenEvent& event,
 }
 
 void HepMC3Event::addVertex(HepMC3::GenEvent& event,
-                            const std::shared_ptr<SimVertex>& vertex) {
-  // Add new vertex
-  event.add_vertex(createGenVertex(vertex));
+                           const std::shared_ptr<SimVertex>& vertex,
+                           const SimParticleContainer& particles) {
+  auto genVertex = createGenVertex(vertex, particles);
+  if (!genVertex->particles_in().empty() || !genVertex->particles_out().empty()) {
+    event.add_vertex(genVertex);
+  }
 }
 
 ///
