@@ -31,6 +31,7 @@
 #include "ActsExamples/Io/Root/RootMeasurementWriter.hpp"
 #include "ActsExamples/Io/Root/RootNuclearInteractionParametersWriter.hpp"
 #include "ActsExamples/Io/Root/RootParticleWriter.hpp"
+#include "ActsExamples/Io/Root/RootParticleFlatWriter.hpp"
 #include "ActsExamples/Io/Root/RootPropagationStepsWriter.hpp"
 #include "ActsExamples/Io/Root/RootPropagationSummaryWriter.hpp"
 #include "ActsExamples/Io/Root/RootSeedWriter.hpp"
@@ -195,6 +196,10 @@ void addOutput(Context& ctx) {
 
   ACTS_PYTHON_DECLARE_WRITER(ActsExamples::RootParticleWriter, mex,
                              "RootParticleWriter", inputParticles, filePath,
+                             fileMode, treeName);
+
+  ACTS_PYTHON_DECLARE_WRITER(ActsExamples::RootParticleFlatWriter, mex,
+                             "RootParticleFlatWriter", inputParticles, filePath,
                              fileMode, treeName);
 
   ACTS_PYTHON_DECLARE_WRITER(ActsExamples::RootVertexWriter, mex,

@@ -1091,7 +1091,6 @@ def addGbtsSeeding(
             numSeedIncrement=seedFilterConfigArg.numSeedIncrement,
             seedWeightIncrement=seedFilterConfigArg.seedWeightIncrement,
             seedConfirmation=seedFilterConfigArg.seedConfirmation,
-            # curvatureSortingInFilter=seedFilterConfigArg.curvatureSortingInFilter,
             maxSeedsPerSpMConf=seedFilterConfigArg.maxSeedsPerSpMConf,
             maxQualitySeedsPerSpMConf=seedFilterConfigArg.maxQualitySeedsPerSpMConf,
             useDeltaRorTopRadius=seedFilterConfigArg.useDeltaRorTopRadius,
@@ -1512,22 +1511,23 @@ def addCKFTracks(
     s.addAlgorithm(trackFinder)
     s.addWhiteboardAlias("tracks", trackFinder.config.outputTracks)
 
-    matchAlg = acts.examples.TrackTruthMatcher(
-        level=customLogLevel(),
-        inputTracks=trackFinder.config.outputTracks,
-        inputParticles="particles_selected",
-        inputMeasurementParticlesMap="measurement_particles_map",
-        outputTrackParticleMatching="ckf_track_particle_matching",
-        outputParticleTrackMatching="ckf_particle_track_matching",
-        doubleMatching=True,
-    )
-    s.addAlgorithm(matchAlg)
-    s.addWhiteboardAlias(
-        "track_particle_matching", matchAlg.config.outputTrackParticleMatching
-    )
-    s.addWhiteboardAlias(
-        "particle_track_matching", matchAlg.config.outputParticleTrackMatching
-    )
+    if writePerformance:
+        matchAlg = acts.examples.TrackTruthMatcher(
+            level=customLogLevel(),
+            inputTracks=trackFinder.config.outputTracks,
+            inputParticles="particles_selected",
+            inputMeasurementParticlesMap="measurement_particles_map",
+            outputTrackParticleMatching="ckf_track_particle_matching",
+            outputParticleTrackMatching="ckf_particle_track_matching",
+            doubleMatching=True,
+        )
+        s.addAlgorithm(matchAlg)
+        s.addWhiteboardAlias(
+            "track_particle_matching", matchAlg.config.outputTrackParticleMatching
+        )
+        s.addWhiteboardAlias(
+            "particle_track_matching", matchAlg.config.outputParticleTrackMatching
+        )
 
     addTrackWriters(
         s,
