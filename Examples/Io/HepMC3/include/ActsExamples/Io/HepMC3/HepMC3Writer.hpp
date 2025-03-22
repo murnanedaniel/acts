@@ -10,6 +10,9 @@
 
 #include "ActsExamples/Framework/WriterT.hpp"
 #include "ActsExamples/Utilities/OptionsFwd.hpp"
+#include "ActsExamples/EventData/SimParticle.hpp"
+#include "ActsExamples/EventData/SimVertex.hpp"
+#include "ActsExamples/Utilities/Paths.hpp"
 
 #include <string>
 
@@ -18,16 +21,14 @@
 
 namespace ActsExamples {
 
-/// HepMC3 event writer.
-class HepMC3AsciiWriter final : public WriterT<std::vector<HepMC3::GenEvent>> {
+/// HepMC3 event writer that takes SimParticles/SimVertices as input
+class HepMC3AsciiWriter final : public WriterT<SimParticleContainer> {
  public:
   struct Config {
-    // The output directory
     std::string outputDir;
-    // The stem of output file names
     std::string outputStem;
-    // The input collection
-    std::string inputEvents;
+    std::string inputParticles;    // SimParticle collection
+    std::string inputVertices;     // SimVertex collection
   };
 
   /// Construct the writer.
@@ -39,11 +40,11 @@ class HepMC3AsciiWriter final : public WriterT<std::vector<HepMC3::GenEvent>> {
   /// Writing events to file.
   ///
   /// @param [in] ctx The context of this algorithm
-  /// @param [in] events The recorded HepMC3 events
+  /// @param [in] particles The SimParticles to write
   ///
   /// @return Code describing whether the writing was successful
   ProcessCode writeT(const ActsExamples::AlgorithmContext& ctx,
-                     const std::vector<HepMC3::GenEvent>& events) override;
+                    const SimParticleContainer& particles) override;
 
   /// Get readonly access to the config parameters
   const Config& config() const { return m_cfg; }
@@ -51,6 +52,9 @@ class HepMC3AsciiWriter final : public WriterT<std::vector<HepMC3::GenEvent>> {
  private:
   /// The configuration of this writer
   Config m_cfg;
+
+  // Data handle for vertices
+  ReadDataHandle<SimVertexContainer> m_inputVertices{this, "InputVertices"};
 };
 
 }  // namespace ActsExamples

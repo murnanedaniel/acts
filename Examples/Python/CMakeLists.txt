@@ -74,6 +74,14 @@ target_link_libraries(
         ActsExamplesMaterialMapping
 )
 
+if(ACTS_BUILD_EXAMPLES_EDM4HEP)
+    target_link_libraries(
+        ActsPythonBindings
+        PUBLIC
+            ActsExamplesIoEDM4hep
+    )
+endif()
+
 set(py_files
     __init__.py
     examples/__init__.py

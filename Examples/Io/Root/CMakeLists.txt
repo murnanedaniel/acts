@@ -7,6 +7,7 @@ add_library(
     src/RootMaterialTrackReader.cpp
     src/RootMaterialTrackWriter.cpp
     src/RootParticleWriter.cpp
+    src/RootParticleFlatWriter.cpp
     src/RootParticleReader.cpp
     src/RootPropagationStepsWriter.cpp
     src/RootPropagationSummaryWriter.cpp
@@ -30,6 +31,7 @@ add_library(
     src/TrackFinderNTupleWriter.cpp
     src/TrackFitterPerformanceWriter.cpp
     src/VertexNTupleWriter.cpp
+    src/RootCaloHitWriter.cpp
 )
 target_include_directories(
     ActsExamplesIoRoot

@@ -74,7 +74,8 @@ void addParticle(HepMC3::GenEvent& event,
 /// @param vertex new vertex that will be added
 /// @note The statuses are not represented in Acts and therefore set to 0
 void addVertex(HepMC3::GenEvent& event,
-               const std::shared_ptr<SimVertex>& vertex);
+               const std::shared_ptr<SimVertex>& vertex,
+               const SimParticleContainer& particles);
 ///
 /// Remover
 ///

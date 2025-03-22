@@ -31,10 +31,12 @@
 #include "ActsExamples/Io/Root/RootMeasurementWriter.hpp"
 #include "ActsExamples/Io/Root/RootNuclearInteractionParametersWriter.hpp"
 #include "ActsExamples/Io/Root/RootParticleWriter.hpp"
+#include "ActsExamples/Io/Root/RootParticleFlatWriter.hpp"
 #include "ActsExamples/Io/Root/RootPropagationStepsWriter.hpp"
 #include "ActsExamples/Io/Root/RootPropagationSummaryWriter.hpp"
 #include "ActsExamples/Io/Root/RootSeedWriter.hpp"
 #include "ActsExamples/Io/Root/RootSimHitWriter.hpp"
+#include "ActsExamples/Io/Root/RootCaloHitWriter.hpp"
 #include "ActsExamples/Io/Root/RootSpacepointWriter.hpp"
 #include "ActsExamples/Io/Root/RootTrackParameterWriter.hpp"
 #include "ActsExamples/Io/Root/RootTrackStatesWriter.hpp"
@@ -48,6 +50,7 @@
 #include "ActsExamples/MaterialMapping/IMaterialWriter.hpp"
 #include "ActsExamples/TrackFinding/ITrackParamsLookupReader.hpp"
 #include "ActsExamples/TrackFinding/ITrackParamsLookupWriter.hpp"
+#include "ActsExamples/Io/EDM4hep/EDM4hepCaloHitWriter.hpp"
 
 #include <memory>
 #include <string>
@@ -197,6 +200,10 @@ void addOutput(Context& ctx) {
 
   ACTS_PYTHON_DECLARE_WRITER(ActsExamples::RootParticleWriter, mex,
                              "RootParticleWriter", inputParticles, filePath,
+                             fileMode, treeName);
+
+  ACTS_PYTHON_DECLARE_WRITER(ActsExamples::RootParticleFlatWriter, mex,
+                             "RootParticleFlatWriter", inputParticles, filePath,
                              fileMode, treeName);
 
   ACTS_PYTHON_DECLARE_WRITER(ActsExamples::RootVertexWriter, mex,
@@ -440,6 +447,14 @@ void addOutput(Context& ctx) {
   ACTS_PYTHON_DECLARE_WRITER(ActsExamples::CsvExaTrkXGraphWriter, mex,
                              "CsvExaTrkXGraphWriter", inputGraph, outputDir,
                              outputStem);
+
+  ACTS_PYTHON_DECLARE_WRITER(ActsExamples::EDM4hepCaloHitWriter, mex,
+                            "EDM4hepCaloHitWriter", inputCaloHits, outputPath,
+                            outputCaloHits);
+
+  ACTS_PYTHON_DECLARE_WRITER(ActsExamples::RootCaloHitWriter, mex,
+                           "RootCaloHitWriter", inputCaloHits, filePath,
+                           fileMode, treeName);
 }
 
 }  // namespace Acts::Python
