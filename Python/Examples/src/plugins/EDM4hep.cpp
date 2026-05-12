@@ -85,11 +85,14 @@ PYBIND11_MODULE(ActsExamplesPythonBindingsEDM4hep, m) {
       .def(py::init<>())
       .def_readwrite("isBarrel", &CaloCollectionDetectorCodes::isBarrel)
       .def_readwrite("barrelCode", &CaloCollectionDetectorCodes::barrelCode)
-      .def_readwrite("endcapNegCode", &CaloCollectionDetectorCodes::endcapNegCode)
-      .def_readwrite("endcapPosCode", &CaloCollectionDetectorCodes::endcapPosCode)
-      .def_static("barrel", &CaloCollectionDetectorCodes::barrel, py::arg("code"))
-      .def_static("endcap", &CaloCollectionDetectorCodes::endcap, py::arg("neg_z"),
-                  py::arg("pos_z"));
+      .def_readwrite("endcapNegCode",
+                     &CaloCollectionDetectorCodes::endcapNegCode)
+      .def_readwrite("endcapPosCode",
+                     &CaloCollectionDetectorCodes::endcapPosCode)
+      .def_static("barrel", &CaloCollectionDetectorCodes::barrel,
+                  py::arg("code"))
+      .def_static("endcap", &CaloCollectionDetectorCodes::endcap,
+                  py::arg("neg_z"), py::arg("pos_z"));
 
   {
     auto [alg, c] =
