@@ -97,6 +97,8 @@ RootTrackStatesWriter::RootTrackStatesWriter(
   m_outputTree->Branch("layer_id", &m_layerID);
   m_outputTree->Branch("module_id", &m_moduleID);
 
+  m_outputTree->Branch("measurement_id", &m_measurementID);
+
   m_outputTree->Branch("stateType", &m_stateType);
 
   m_outputTree->Branch("chi2", &m_chi2);
@@ -398,12 +400,17 @@ ProcessCode RootTrackStatesWriter::writeT(const AlgorithmContext& ctx,
         m_x_hit.push_back(nan);
         m_y_hit.push_back(nan);
         m_z_hit.push_back(nan);
+        
+        // No measurement ID for states without source links
+        m_measurementID.push_back(std::numeric_limits<std::uint64_t>::max());
       } else {
         // get the truth hits corresponding to this trackState
         // Use average truth in the case of multiple contributing sim hits
         auto sl =
             state.getUncalibratedSourceLink().template get<IndexSourceLink>();
         const auto hitIdx = sl.index();
+        // Store measurement ID for this state
+        m_measurementID.push_back(static_cast<std::uint64_t>(hitIdx));
         auto indices = makeRange(hitSimHitsMap.equal_range(hitIdx));
         auto [truthLocal, truthPos4, truthUnitDir] =
             averageSimHits(ctx.geoContext, surface, simHits, indices, logger());
@@ -686,6 +693,7 @@ ProcessCode RootTrackStatesWriter::writeT(const AlgorithmContext& ctx,
     m_volumeID.clear();
     m_layerID.clear();
     m_moduleID.clear();
+    m_measurementID.clear();
 
     m_stateType.clear();
 

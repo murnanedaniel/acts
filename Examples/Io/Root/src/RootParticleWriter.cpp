@@ -239,12 +239,16 @@ ActsExamples::ProcessCode ActsExamples::RootParticleWriter::writeT(
     }
 
     // Charged particles: propagate helix to perigee
-    // Build a propagator and propagate the *truth parameters* to the
-    // perigee Stepper + propagator
+    // Build a propagator and propagate the *truth parameters* to the perigee.
+    // Use a logger cloned from the writer logger so the propagator respects
+    // the same logging level as this writer.
     using Stepper = Acts::SympyStepper;
     Stepper stepper(m_cfg.bField);
     using PropagatorT = Acts::Propagator<Stepper>;
-    auto propagator = std::make_shared<PropagatorT>(stepper);
+    auto propagatorLogger = std::shared_ptr<const Acts::Logger>(
+        logger().cloneWithSuffix("PerigeePropagator"));
+    auto propagator = std::make_shared<PropagatorT>(
+        stepper, typename PropagatorT::Navigator{}, std::move(propagatorLogger));
 
     Acts::BoundTrackParameters startParams =
         Acts::BoundTrackParameters::createCurvilinear(

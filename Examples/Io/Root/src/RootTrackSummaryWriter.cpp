@@ -15,6 +15,7 @@
 #include "Acts/Utilities/Intersection.hpp"
 #include "Acts/Utilities/Result.hpp"
 #include "Acts/Utilities/detail/periodic.hpp"
+#include "ActsExamples/EventData/IndexSourceLink.hpp"
 #include "ActsExamples/EventData/TruthMatching.hpp"
 #include "ActsExamples/Framework/AlgorithmContext.hpp"
 #include "ActsExamples/Framework/WriterT.hpp"
@@ -87,6 +88,7 @@ RootTrackSummaryWriter::RootTrackSummaryWriter(
   m_outputTree->Branch("measurementLayer", &m_measurementLayer);
   m_outputTree->Branch("outlierVolume", &m_outlierVolume);
   m_outputTree->Branch("outlierLayer", &m_outlierLayer);
+  m_outputTree->Branch("measurementIDs", &m_measurementIDs);
 
   m_outputTree->Branch("nMajorityHits", &m_nMajorityHits);
   m_outputTree->Branch("majorityParticleId", &m_majorityParticleId);
@@ -249,6 +251,7 @@ ProcessCode RootTrackSummaryWriter::writeT(const AlgorithmContext& ctx,
       std::vector<double> outlierChi2;
       std::vector<std::uint32_t> outlierVolume;
       std::vector<std::uint32_t> outlierLayer;
+      std::vector<std::uint64_t> measurementIDs;
       for (const auto& state : track.trackStatesReversed()) {
         const auto& geoID = state.referenceSurface().geometryId();
         const auto& volume = geoID.volume();
@@ -262,6 +265,10 @@ ProcessCode RootTrackSummaryWriter::writeT(const AlgorithmContext& ctx,
           measurementChi2.push_back(state.chi2());
           measurementVolume.push_back(volume);
           measurementLayer.push_back(layer);
+          // Collect measurement ID (mirroring CsvTrackWriter logic)
+          auto sl = state.getUncalibratedSourceLink()
+                        .template get<IndexSourceLink>();
+          measurementIDs.push_back(sl.index());
         }
       }
       m_measurementChi2.push_back(std::move(measurementChi2));
@@ -270,6 +277,7 @@ ProcessCode RootTrackSummaryWriter::writeT(const AlgorithmContext& ctx,
       m_outlierChi2.push_back(std::move(outlierChi2));
       m_outlierVolume.push_back(std::move(outlierVolume));
       m_outlierLayer.push_back(std::move(outlierLayer));
+      m_measurementIDs.push_back(std::move(measurementIDs));
     }
 
     // Initialize the truth particle info
@@ -552,6 +560,7 @@ ProcessCode RootTrackSummaryWriter::writeT(const AlgorithmContext& ctx,
   m_measurementLayer.clear();
   m_outlierVolume.clear();
   m_outlierLayer.clear();
+  m_measurementIDs.clear();
 
   m_nMajorityHits.clear();
   m_majorityParticleId.clear();
