@@ -175,6 +175,9 @@ class RootTrackStatesWriter final : public WriterT<ConstTrackContainer> {
   std::vector<std::vector<std::uint32_t>> m_particleGeneration;
   std::vector<std::vector<std::uint32_t>> m_particleSubParticle;
 
+  /// measurement ID/index for each track state
+  std::vector<std::uint64_t> m_measurementID;
+
   /// dimension of measurement
   std::vector<int> m_dim_hit;
   /// uncalibrated measurement local x

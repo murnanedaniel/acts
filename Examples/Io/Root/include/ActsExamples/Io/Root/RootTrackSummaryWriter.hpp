@@ -140,6 +140,8 @@ class RootTrackSummaryWriter final : public WriterT<ConstTrackContainer> {
   std::vector<std::vector<std::uint32_t>> m_outlierVolume;
   /// The layer id of the outliers
   std::vector<std::vector<std::uint32_t>> m_outlierLayer;
+  /// The measurement IDs for each track
+  std::vector<std::vector<std::uint64_t>> m_measurementIDs;
 
   // The majority truth particle info
   /// The number of hits from majority particle
