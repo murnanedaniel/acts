@@ -196,6 +196,15 @@ std::shared_ptr<arrow::Schema> trackSchema() {
       arrow::field("hit_ids", arrow::list(arrow::list(arrow::uint32())), false),
       arrow::field("track_id", arrow::list(arrow::uint16()), false),
       arrow::field("t", nullableFloatList(), true),
+      // Per-sim-hit outlier flag, parallel to hit_ids: true where the
+      // contributing track state is an outlier (still source-linked, but
+      // rejected from the fit). Lets consumers keep sim-hit-level hit_ids
+      // while filtering outliers when desired.
+      arrow::field("hit_outlier", arrow::list(arrow::list(arrow::boolean())),
+                   false),
+      // Genuine number of measurement states (merged clusters) on the track —
+      // independent of sim-hit multiplicity within a cluster and of outliers.
+      arrow::field("num_measurements", arrow::list(arrow::uint32()), false),
   });
 }
 
