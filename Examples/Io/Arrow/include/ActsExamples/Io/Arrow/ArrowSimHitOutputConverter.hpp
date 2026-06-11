@@ -28,40 +28,47 @@
 
 namespace ActsExamples {
 
-/// Convert a @c SimHitContainer to an @c arrow::Table.
+/// Convert measurements (with their contributing sim-hit truth) to an
+/// @c arrow::Table.
 ///
-/// The output table has one row per event with list-valued columns. Hits are
-/// emitted in @c SimHitContainer iteration order, so the row index of a hit
-/// inside the per-event list equals its @c SimHitIndex; downstream tables
-/// (e.g. tracks) can therefore reference hits by that index.
+/// The output table has one row per event with list-valued columns, and one
+/// entry per MEASUREMENT. Measurements are emitted in @c MeasurementContainer
+/// iteration order, so the entry's position in the per-event lists equals its
+/// measurement index — downstream tables (e.g. tracks) reference measurements
+/// by that index, and there is no separate measurement-id column. Reco
+/// @c x,y,z + geometry are one value per measurement; the contributing
+/// sim-hits' truth (@c particle_id, @c true_x,true_y,true_z, @c time) are
+/// nested lists (outer = per measurement, inner = per contributing sim-hit).
 ///
-/// When @c inputMeasurements, @c inputSimHitMeasurementsMap, and
-/// @c trackingGeometry are all provided, the digitized cluster position
-/// (local-to-global from the matched measurement) is written into @c x,y,z.
-/// Otherwise those columns are filled with NaN. The truth position is always
-/// written into @c true_x,true_y,true_z.
+/// Sim-hits that contribute to no measurement are dropped (expected to be a
+/// negligible fraction); the dropped fraction is checked at runtime against
+/// @c maxUnmatchedSimHitFraction.
 class ACTS_ARROW_EXPORT ArrowSimHitOutputConverter final
     : public ArrowOutputConverter {
  public:
   struct Config {
-    /// Input @c SimHitContainer on the whiteboard.
+    /// Input @c SimHitContainer on the whiteboard (source of truth positions
+    /// and particle barcodes for the nested per-measurement columns).
     std::string inputSimHits;
-    /// Optional input particle container used to resolve the hit's particle
-    /// barcode to a row index in the corresponding parquet table. Must be the
-    /// same container the @c ArrowParticleOutputConverter consumes for that
-    /// table — leaving it empty forces the unmatched sentinel.
+    /// Optional input particle container used to resolve a contributing
+    /// sim-hit's particle barcode to a row index in the corresponding parquet
+    /// table. Must be the same container the @c ArrowParticleOutputConverter
+    /// consumes for that table — leaving it empty forces the unmatched sentinel.
     std::string inputParticles;
-    /// Optional measurement container. Required (together with the two below)
-    /// to fill the digitized @c x,y,z columns; otherwise those are NaN.
+    /// Measurement container (required). One output row per measurement.
     std::string inputMeasurements;
-    /// Optional sim-hit → measurement(s) inverse map; keyed by @c SimHitIndex.
+    /// Sim-hit → measurement(s) map keyed by @c SimHitIndex (required). It is
+    /// inverted internally to measurement → contributing sim-hits.
     std::string inputSimHitMeasurementsMap;
     /// Output whiteboard key for the resulting @c arrow::Table.
     std::string outputTable = "simhits";
     /// Tracking geometry used to find surfaces by @c GeometryIdentifier when
-    /// projecting the matched measurement's local parameters back to global
-    /// coordinates. Required for digitized @c x,y,z to be populated.
+    /// projecting each measurement's local parameters back to global
+    /// coordinates (required).
     std::shared_ptr<const Acts::TrackingGeometry> trackingGeometry;
+    /// Sim-hits contributing to no measurement are dropped from the table.
+    /// If the dropped fraction exceeds this, conversion throws (default 0.1%).
+    double maxUnmatchedSimHitFraction = 0.001;
     /// Resolves the @c detector subsystem id for a given hit's geometry id.
     /// Defaults to reading the geometry id's @c extra byte; users can swap
     /// in any custom mapping (e.g. by volume or by surface lookup) when the

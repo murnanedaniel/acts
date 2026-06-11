@@ -70,7 +70,8 @@ PYBIND11_MODULE(ActsExamplesPythonBindingsArrow, m) {
             m, "ArrowSimHitOutputConverter");
     ACTS_PYTHON_STRUCT(c, inputSimHits, inputParticles, inputMeasurements,
                        inputSimHitMeasurementsMap, outputTable,
-                       trackingGeometry, detectorResolver);
+                       trackingGeometry, detectorResolver,
+                       maxUnmatchedSimHitFraction);
   }
 
   m.def("makeVolumeIdDetectorResolver",
