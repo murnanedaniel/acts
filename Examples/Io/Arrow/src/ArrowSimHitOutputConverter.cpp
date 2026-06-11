@@ -271,7 +271,18 @@ ProcessCode ArrowSimHitOutputConverter::execute(
     check(tzVL->Append(), "open per-measurement true_z list");
     check(timeVL->Append(), "open per-measurement time list");
 
+    // Reserve the nested inner value builders for this measurement's
+    // contributors, then append. (Unlike the flat builders we cannot reserve
+    // these up front because the per-measurement multiplicity is only known
+    // here; without the reserve, UnsafeAppend would write past the buffer.)
     auto range = measToSimHits.equal_range(measIdx);
+    const auto nContribs =
+        static_cast<std::int64_t>(std::distance(range.first, range.second));
+    check(pidVV->Reserve(nContribs), "reserve particle_id contribs");
+    check(txVV->Reserve(nContribs), "reserve true_x contribs");
+    check(tyVV->Reserve(nContribs), "reserve true_y contribs");
+    check(tzVV->Reserve(nContribs), "reserve true_z contribs");
+    check(timeVV->Reserve(nContribs), "reserve time contribs");
     for (auto it = range.first; it != range.second; ++it) {
       const SimHitIndex simHitIdx = it->second;
       const auto& hit = *simHits.nth(simHitIdx);
